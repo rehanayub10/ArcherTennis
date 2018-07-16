@@ -1,0 +1,373 @@
+/*
+Description: This game is inspired from the TV show Arrow. It involves balls that 
+             appear from the bottom of the screen, and the aim of the user is to
+             shoot as many as they can within 60 seconds. While the green and gold
+             balls will earn them points, the player must be aware of the red balls
+             that deduct their score by 3 points if hit. When the game finishes, the
+             "Game Over" screen shows the stats of how many of each type of ball they
+             hit, and gives the user the option to play again.
+Author: Rehan Ayub
+Last Modified: January 23rd 2018
+*/
+
+ArrayList <PVector> ballLocations; 
+ArrayList <PVector> ballVelocities;
+ArrayList <PVector> ballColours;
+
+ArrayList <PVector> arrowPosition;
+
+PImage archer; //the archer that shoots the balls
+PImage gameOverPic; //the "you have failed this city" picture that appears when the game finsihes
+PImage island; //the background image
+
+PFont title; //the font used for the title and instructions
+
+boolean shoot; //is true when the arrow moves
+boolean displayInstructions;
+boolean gameOver; //booleans used to navigate through different screens
+
+int ballsOnScreen; //sets the number of balls that appear on the screen
+int score;
+int greenShots, redShots, goldShots; //keep track of the number of each type of ball shot
+int timer;
+
+float diameter; //sets the diameter of the balls
+
+void settings() {
+  fullScreen();
+}
+
+void setup() {
+  colorMode(HSB, 255);
+
+  archer = loadImage("imageedit_1_7203627917 (2).png");
+  gameOverPic = loadImage("you-have-failed-this-city-6 (1).png");
+  island = loadImage("LianYu.jpg");
+  island.resize(width, height); //images loaded and resized in setup to prevent lagging in draw
+
+  ballLocations = new ArrayList <PVector> ();
+  ballVelocities = new ArrayList <PVector> ();
+  ballColours = new ArrayList <PVector> ();
+  arrowPosition = new ArrayList <PVector> ();
+
+  ballsOnScreen = 10;
+  timer = 60;
+  diameter = 40;
+  shoot = false;
+  displayInstructions = true;
+  gameOver = false;
+
+  for (int i = 0; i < ballsOnScreen; i++) {
+    ballLocations.add(new PVector(random(width/2, width - diameter *2), height));
+  }
+
+  for (int i = 0; i < ballsOnScreen; i++) {
+    ballVelocities.add(new PVector(0, random(-17, -12)));
+  }
+
+  for (int i = 0; i < ballsOnScreen; i++) {
+    ballColours.add(new PVector(86, 255, 255)); //3D vector for colour
+  }
+
+  arrowPosition.add(new PVector(width/3, height/2));
+  rectMode(CENTER);
+}
+
+void draw() {
+  background(island);
+
+  if (displayInstructions) { //booleans used to navigate through different screens
+    instructionScreen();
+  } else if (!displayInstructions) {
+    arrowDisplay();
+
+    if (shoot) { //used to shoot the arrow
+      moveArrow();
+    }
+
+    generateNewBalls();
+    ballDisplay();
+    moveBalls();
+    collide();
+  }
+
+  if (timer == 0) {
+    gameOver = true;
+  } //game finishes after 60 seconds
+
+  if (gameOver == true) {
+    gameOverScreen();
+    shoot = false;
+  }
+}
+
+void mousePressed() {
+  if (displayInstructions && !gameOver) {
+    if (mouseX > width - 280 && mouseX < width && mouseY > height - 60 && mouseY < height) { //used for the start button on the instruction screen
+      displayInstructions = false;
+      frameCount = 0;
+    }
+  }
+  if (!displayInstructions && !gameOver) { //used to shoot the arrow
+    shoot = true;
+  } 
+  if (!displayInstructions && gameOver) { //used for the "Play Again" button
+    if (mouseX > width - 280 && mouseX < width && mouseY > height - 60 && mouseY < height) {
+      reset();
+    }
+  }
+}
+
+void keyPressed() {
+  if (key == ENTER) {
+    reset();
+  } //the user can press ENTER if they wish to reset the game
+}
+
+void instructionScreen() {
+  image(archer, width/7, height/4);
+  title = createFont("Georgia", 120);
+
+  //Title text
+  textAlign(CENTER);
+  textFont(title);
+  textSize(80);
+  fill(86, 255, 255);
+  text("ARCHER TENNIS", width * 11/16 - 30, 170); 
+
+  //Instruction text
+  fill(255);
+  textSize(30);
+  textAlign(LEFT);
+  text("Every super hero needs practice to succeed and now it is your \n" + 
+    "turn! Use the mouse to position the archer vertically, and \n" +
+    "press to shoot! Score as many points as you can in 60 seconds!", width/2 - 160, height/3);
+  textSize(35);
+  text("Press ENTER to restart the game.", width/2 - 200, height - 50);
+  text("Rehan Ayub", 10, 50);
+
+  //Draws the balls on the instruction page
+  stroke(0);
+  strokeWeight(2);
+  fill(86, 255, 255);
+  ellipse(width/2 - 50, height/2 + 50, diameter, diameter);
+  fill(28, 255, 255);
+  ellipse(width/2 - 50, height/2 + 125, diameter, diameter);
+  fill(0, 255, 255);
+  ellipse(width/2 - 50, height/2 + 200, diameter, diameter);
+
+  stroke(255);
+  strokeWeight(5);
+  noFill();
+  arc(width/2 - 50, height/2 + 50, diameter/4, 32, PI/2, 3 *PI/2);
+  arc(width/2 - 50, height/2 + 125, diameter/4, 32, PI/2, 3 *PI/2);
+  arc(width/2 - 50, height/2 + 200, diameter/4, 32, PI/2, 3 *PI/2);
+
+  //Scoring system text
+  fill(255);
+  textSize(27);
+  text("Earns you one point", width/2, height/2 + 70);
+  text("Look for these! These will earn you FIVE points!", width/2, height/2 + 145);
+  text("Beware! These will lose you THREE points!", width/2, height/2 + 220);
+
+  //Start Game button
+  fill(#F2B10A);
+  rect(width - 140, height - 30, 280, 60);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(35);
+  text("START GAME", width - 140, height - 32);
+}
+
+
+void ballDisplay() { //draws the balls and sets their appearance
+  for (int i = 0; i < ballLocations.size(); i++) {
+    PVector location = ballLocations.get(i);
+    PVector col = ballColours.get(i);
+
+    stroke(0);
+    strokeWeight(2);
+    fill(col.x, col.y, col.z);
+    ellipse(location.x, location.y, diameter, diameter);
+
+    noFill();
+    stroke(255);
+    strokeWeight(5);
+    arc(location.x, location.y, diameter/4, 30, PI/2, 3 *PI/2);
+  }
+}
+
+void moveBalls() { //moves the ball and makes them fall
+  for (int i = 0; i < ballLocations.size(); i++) {
+    PVector location = ballLocations.get(i);
+    PVector vel = ballVelocities.get(i);
+    PVector acceleration = new PVector(0, 0.2);
+
+    vel.add(acceleration);
+    location.add(vel);
+  }
+}
+
+void generateNewBalls() {  
+  for (int i = 0; i < ballLocations.size(); i++) {
+    PVector location = ballLocations.get(i);
+
+    if (location.y > height + diameter * 2) {
+      ballLocations.remove(i);
+      ballVelocities.remove(i);
+      ballColours.remove(i); //once the balls are off the screen, they are removed from the ArrayLists 
+
+      ballLocations.add(new PVector(random(width/2, width - diameter *2), height));
+      ballVelocities.add(new PVector(0, random(-17, -12)));
+      if (frameCount % 40 == 0) {
+        ballColours.add(new PVector(28, 255, 255)); //adds gold balls at a relatively rate
+      } else if (frameCount % 6 == 0) {
+        ballColours.add(new PVector (0, 255, 255)); //adds red balls at a faster rate
+      } else {
+        ballColours.add(new PVector (86, 255, 255)); //adds the green balls which pop up most frequently
+      }
+    }
+  }
+}
+
+void arrowDisplay() {
+  PVector arrow = arrowPosition.get(0);
+  arrow.y = mouseY + 95; //allows positioning using the mouse
+  noCursor();
+
+  strokeWeight(3);
+  stroke(0);
+  line(arrow.x - 200, arrow.y, arrow.x, arrow.y);
+
+  stroke(#3DE061);
+  triangle(arrow.x, arrow.y - 4, arrow.x, arrow.y + 4, arrow.x + 15, arrow.y);
+
+  image(archer, width/7, mouseY);
+  if (mouseY > height - 200) {
+    mouseY = height - 200;
+  }
+
+  fill(#FA4723);
+  textSize(60);
+  text(score, 100, height - 50);
+
+  timer = abs(60 - frameCount/60); //sets the timer to count down to 0
+  textSize(50);
+  if (timer < 10) {
+    fill(0, 255, 255); //timer turns red during the last ten seconds
+  } else {
+    fill(0);
+  }
+  text(timer, width/2, 40);
+}
+
+void moveArrow() { //occurs when "shoot" is true (the mouse is pressed during gameplay)
+  PVector arrow = arrowPosition.get(0);
+  arrow.x += 200;
+
+  if (arrow.x > width) { //keeps regenrating arrows after they are off the screen during the course of the game
+    arrowPosition.remove(0);
+    arrowPosition.add(new PVector(width/3, mouseY));
+    shoot = false;
+  }
+}
+
+void collide() {
+  for (int i = 0; i < ballLocations.size(); i++) {
+    PVector location = ballLocations.get(i);
+    PVector arrow = arrowPosition.get(0);
+    PVector col = ballColours.get(i);
+
+    if (arrow.y > location.y - diameter/2 && arrow.y < location.y + diameter/2 && arrow.x > location.x - diameter) {
+      location.x += (width - location.x + diameter);
+      if (col.x == 0) { //red balls decrease score by 3 points
+        score -= 3;
+        redShots ++;
+      } else if (col.x == 28) { //gold balls increase score by 5 points
+        score += 5;
+        goldShots ++;
+      } else { //green balls increase score by 1 point
+        score ++;
+        greenShots ++;
+      }
+      if (score < 0) {
+        score = 0;
+      } //score cannot be negative
+    }
+  }
+}
+
+void gameOverScreen() {
+  background(0);
+  image(gameOverPic, 50, 50);
+  cursor(); //cursor reappears so that user can navigate around the screen
+
+  fill(255);
+  textAlign(LEFT);
+  text("...Or not.", width/2 + 50, height/5);
+
+  fill(86, 255, 255);
+  textSize(40);
+  text("Try again and beat your \n" +
+    "high score!", width/2 + 50, height/3);
+
+  fill(#F2380A);
+  text("Score: " + score, width/2 + 50, height * 5/8 - 30);
+
+  //Draws the ball on to the Game Over Screen
+  stroke(0);
+  strokeWeight(2);
+  fill(86, 255, 255);
+  ellipse(width/2 + 50, height * 3/4, diameter, diameter);
+  fill(28, 255, 255);
+  ellipse(width/2 + 250, height * 3/4, diameter, diameter);
+  fill(0, 255, 255);
+  ellipse(width/2 + 450, height * 3/4, diameter, diameter);
+
+  stroke(255);
+  strokeWeight(5);
+  noFill();
+  arc(width/2 + 50, height * 3/4, diameter/4, 32, PI/2, 3 *PI/2);
+  arc(width/2 + 250, height * 3/4, diameter/4, 32, PI/2, 3 *PI/2);
+  arc(width/2 + 450, height * 3/4, diameter/4, 32, PI/2, 3 *PI/2);
+
+  //Gives stats about how many of each ball the user shot
+  fill(255);
+  text(greenShots, width/2 + 75, height * 3/4 + diameter/2);
+  text(goldShots, width/2 + 275, height * 3/4 + diameter/2);
+  text(redShots, width/2 + 475, height * 3/4 + diameter/2);
+
+  //Play Again button
+  fill(#F2B10A);
+  rect(width - 140, height - 30, 280, 60);
+  fill(255);
+  textAlign(CENTER, CENTER);
+  text("Play Again", width - 140, height - 32);
+}
+
+void reset() { //switches settings to the way they were at the start of the game
+  frameCount = 0;
+
+  score = 0;
+  greenShots = 0;
+  redShots = 0;
+  goldShots = 0;
+
+  ballLocations.clear();
+  ballVelocities.clear();
+  ballColours.clear();
+
+  for (int i = 0; i < ballsOnScreen; i++) {
+    ballLocations.add(new PVector(random(width/2, width - diameter *2), height));
+  }
+
+  for (int i = 0; i < ballsOnScreen; i++) {
+    ballVelocities.add(new PVector(0, random(-17, -12)));
+  }
+
+  for (int i = 0; i < ballsOnScreen; i++) {
+    ballColours.add(new PVector(86, 255, 255));
+  }
+
+  gameOver = false;
+}
